@@ -25,7 +25,7 @@ from datetime import datetime, timedelta, timezone
 JST = timezone(timedelta(hours=9))
 
 # ── 検索条件 ──────────────────────────────────────────
-KEYWORDS = ["本社移転", "本店移転", "事務所移転", "移転 発表"]
+KEYWORDS = ["移転"]
 LOOKBACK_MINUTES = 75  # 1時間おき実行に対して少し幅を持たせる(取りこぼし防止)
 
 # ── 場所タグの条件(優先度は数字が小さいほど高い) ──────────
