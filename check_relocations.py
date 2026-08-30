@@ -26,7 +26,13 @@ JST = timezone(timedelta(hours=9))
 
 # ── 検索条件 ──────────────────────────────────────────
 KEYWORDS = ["移転"]
-LOOKBACK_MINUTES = 130  # 1時間おき実行に対して少し幅を持たせる(取りこぼし防止)
+NORMAL_WHEN_HOURS = 2
+NORMAL_LOOKBACK_MINUTES = 130  # 検索クエリのwhen:2h(120分)に合わせて少し幅を持たせる
+
+MORNING_CATCHUP_HOUR = 7      # この時刻(日本時間)の回だけ、夜間分をまとめて検索する
+NIGHT_GAP_HOURS = 12          # 19時〜翌7時の空白時間(時間)
+MORNING_WHEN_HOURS = NIGHT_GAP_HOURS + 1        # 少し余裕を持たせる
+MORNING_LOOKBACK_MINUTES = MORNING_WHEN_HOURS * 60 + 10
 
 # ── 場所タグの条件(優先度は数字が小さいほど高い) ──────────
 BUILDINGS = [
@@ -192,14 +198,29 @@ def send_email(subject, body):
 
 # ── メイン処理 ────────────────────────────────────────────
 def main():
+    now = datetime.now(JST)
+
+    # 土日はスキップ(月曜=0 … 土曜=5, 日曜=6)。日本時間の曜日で判定する。
+    if now.weekday() >= 5:
+        label = "土曜" if now.weekday() == 5 else "日曜"
+        print(f"[info] 今日は{label}(日本時間)のため、チェックをスキップします。")
+        return
+
+    if now.hour == MORNING_CATCHUP_HOUR:
+        when_hours = MORNING_WHEN_HOURS
+        lookback_minutes = MORNING_LOOKBACK_MINUTES
+        print(f"[debug] 朝一の回のため、直近{when_hours}時間分をまとめて検索します。")
+    else:
+        when_hours = NORMAL_WHEN_HOURS
+        lookback_minutes = NORMAL_LOOKBACK_MINUTES
+
     seen_data = load_seen()
     seen_links = set(seen_data["seen"])
-    now = datetime.now(JST)
-    cutoff = now - timedelta(minutes=LOOKBACK_MINUTES)
+    cutoff = now - timedelta(minutes=lookback_minutes)
 
     candidates = {}
     for kw in KEYWORDS:
-        query = f'"{kw}" 東京 when:2h'
+        query = f'"{kw}" 東京 when:{when_hours}h'
         try:
             items = fetch_google_news_rss(query)
         except Exception as e:
@@ -271,7 +292,7 @@ def main():
             subject = "【実行報告】移転企業チェック(0件)"
             body = (
                 f"{now.strftime('%Y-%m-%d %H:%M')}(JST) 実行。\n"
-                f"今回のチェックでは、直近{LOOKBACK_MINUTES}分以内の東京23区の移転ニュースは"
+                f"今回のチェックでは、直近{lookback_minutes}分以内の東京23区の移転ニュースは"
                 f"見つかりませんでした。タスクは正常に動作しています。"
             )
             send_email(subject, body)
