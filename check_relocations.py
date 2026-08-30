@@ -205,23 +205,39 @@ def main():
         except Exception as e:
             print(f"[warn] 検索失敗: {kw}: {e}")
             items = []
+        print(f"[debug] キーワード「{kw}」の検索結果: {len(items)}件")
+
+        skipped_seen = 0
+        skipped_old = 0
         for it in items:
             if it["link"] in seen_links or it["link"] in candidates:
+                skipped_seen += 1
                 continue
             pub = parse_pubdate(it["pubDate"])
             if pub is None or pub < cutoff:
+                skipped_old += 1
                 continue
             candidates[it["link"]] = it
+        print(f"[debug]   -> 既知でスキップ: {skipped_seen}件 / 古すぎてスキップ: {skipped_old}件")
+
+    print(f"[debug] 新規かつ期間内の候補: {len(candidates)}件")
 
     hits = []
+    fetch_fail_count = 0
+    no_place_count = 0
     for link, it in candidates.items():
         final_url, article_text = fetch_article_text(link)
         combined_text = it["title"] + " " + article_text
+
+        if not article_text:
+            fetch_fail_count += 1
+        print(f"[debug] 記事: {it['title'][:40]!r} / 本文取得文字数: {len(article_text)} / URL: {final_url[:80]}")
 
         place = detect_place(combined_text)
         seen_links.add(link)  # 一度判定した記事は今後スキップする
 
         if place is None:
+            no_place_count += 1
             continue  # 東京23区に該当しない
 
         place_rank, place_label = place
@@ -239,6 +255,12 @@ def main():
             "count_text": (f"{count}名" if count else "不明"),
             "link": final_url,
         })
+
+    print(
+        f"[debug] 集計: 候補{len(candidates)}件のうち、"
+        f"本文取得失敗{fetch_fail_count}件 / 東京23区に該当なし{no_place_count}件 / "
+        f"ヒット{len(hits)}件"
+    )
 
     if hits:
         subject, body = build_email(hits)
