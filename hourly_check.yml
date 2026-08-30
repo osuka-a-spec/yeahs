@@ -4,7 +4,7 @@ on:
   schedule:
     # 毎時1分に実行(GitHub ActionsのcronはUTCだが、UTC→JSTは時差が9時間ちょうどなので
     # 分の値はそのままでよい。実際の発火は数分〜十数分遅れることがある)
-    - cron: '1 * * * *'
+        - cron: '1 * * * 1-5'
   workflow_dispatch: {}   # 手動実行ボタン(Actionsタブから "Run workflow" で今すぐテスト可能)
 
 permissions:
