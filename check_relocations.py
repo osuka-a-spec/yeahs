@@ -199,7 +199,7 @@ def main():
 
     candidates = {}
     for kw in KEYWORDS:
-        query = f'"{kw}" 東京'
+        query = f'"{kw}" 東京 when:2h'
         try:
             items = fetch_google_news_rss(query)
         except Exception as e:
